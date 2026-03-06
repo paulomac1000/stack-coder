@@ -25,6 +25,7 @@ services:
     volumes:
       # 1. Workspace Access
       - /var/apps:/var/apps
+      - .:/var/apps/coder
 
       # 2. Docker Socket (Control host docker)
       - /var/run/docker.sock:/var/run/docker.sock
