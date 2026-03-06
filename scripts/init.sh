@@ -255,6 +255,11 @@ echo ""
 echo "============================================"
 echo ""
 
+# ── 6. SET PASSWORD FOR CODE-SERVER ──
+if [ -z "${PASSWORD:-}" ] && [ -n "${CODE_PASSWORD:-}" ]; then
+  export PASSWORD="$CODE_PASSWORD"
+fi
+
 exec code-server \
   --bind-addr 0.0.0.0:8100 \
   --cert \
