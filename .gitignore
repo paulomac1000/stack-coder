@@ -1,0 +1,20 @@
+# Secrets
+.env
+google-cloud-key.json
+
+# Runtime data (code-server persistence)
+data/
+continue/
+
+# Pipe IPC files
+exec_cmd
+exec_out
+exec_lock
+nohup.out
+
+# Backups
+*.bak
+*.old
+
+# AI mistake prevention — do not let agents create var/apps/ inside the repo
+var/

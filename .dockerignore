@@ -1,0 +1,35 @@
+# Git
+.git
+.gitignore
+
+# Docker
+docker-compose.yml
+docker-compose.yml.bak
+docker-compose-new.yml
+Dockerfile
+
+# Data (persisted volumes)
+data/
+data/**/*
+
+# Continue config (mounted separately)
+continue/
+continue/**/*
+
+# Scripts (mounted separately)
+*.sh
+!Dockerfile
+
+# Environment
+.env
+
+# Documentation
+README*.md
+
+# Other configs
+google-cloud-key.json
+continue_mcp_config_example.json
+
+# Backups
+*.bak
+*.old
