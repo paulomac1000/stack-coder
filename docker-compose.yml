@@ -12,7 +12,7 @@ services:
     environment:
       - TZ=Europe/Warsaw
       - DOCKER_HOST=unix:///var/run/docker.sock
-    command: ["/bin/bash", "/var/apps/coder/init.sh"]
+    entrypoint: ["/bin/bash", "/var/apps/coder/init.sh"]
     volumes:
       # 1. Workspace Access
       - /var/apps:/var/apps

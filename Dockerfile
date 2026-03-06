@@ -1,4 +1,4 @@
-FROM coder/code-server:latest
+FROM codercom/code-server:latest
 
 USER root
 
