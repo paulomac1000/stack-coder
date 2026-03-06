@@ -16,7 +16,7 @@ services:
       - TZ=Europe/Warsaw
       - DOCKER_HOST=unix:///var/run/docker.sock
     healthcheck:
-      test: ["CMD", "curl", "-k", "-sf", "https://localhost:8080"]
+      test: ["CMD", "curl", "-k", "-sf", "https://localhost:8100"]
       interval: 5s
       timeout: 5s
       start_period: 30s
