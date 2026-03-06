@@ -21,7 +21,7 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 6
-    entrypoint: ["/bin/bash", "/var/apps/coder/init.sh"]
+    entrypoint: ["/bin/bash", "/var/apps/coder/scripts/init.sh"]
     volumes:
       # 1. Workspace Access
       - /var/apps:/var/apps

@@ -193,6 +193,46 @@ EOF
 echo ">>> Config saved."
 echo ""
 
+# ── 5. GENERATE DEFAULT VS CODE SETTINGS ──
+SETTINGS_DIR="/home/coder/.local/share/code-server/User"
+SETTINGS_FILE="$SETTINGS_DIR/settings.json"
+
+if [ ! -f "$SETTINGS_FILE" ]; then
+  echo ">>> Generating default VS Code settings..."
+  mkdir -p "$SETTINGS_DIR"
+  cat > "$SETTINGS_FILE" << 'EOF'
+{
+  "editor.formatOnSave": true,
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/node_modules": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/__pycache__": true
+  },
+  "editor.renderWhitespace": "selection",
+  "editor.guides.bracketPairs": true,
+  "workbench.colorTheme": "Default Dark Modern",
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "continue.enableTabAutocomplete": true,
+  "continue.telemetryEnabled": false
+}
+EOF
+  echo ">>> VS Code settings saved."
+else
+  echo ">>> VS Code settings already exist. Skipping..."
+fi
+echo ""
+
 # ── 5. STARTING CODE-SERVER WITH HTTPS ──
 echo "============================================"
 echo "  STARTING CODE-SERVER WITH HTTPS"

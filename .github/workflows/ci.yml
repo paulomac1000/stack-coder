@@ -17,11 +17,11 @@ jobs:
         run: sudo apt-get install -y shellcheck
 
       - name: Shellcheck all shell scripts
-        run: shellcheck --severity=warning *.sh
+        run: shellcheck --severity=warning scripts/*.sh
 
       - name: Bash syntax check all shell scripts
         run: |
-          for f in *.sh; do
+          for f in scripts/*.sh; do
             bash -n "$f" || exit 1
           done
 
@@ -57,7 +57,7 @@ jobs:
         run: docker compose up -d --wait
 
       - name: Run integration tests inside container
-        run: docker exec code-server bash /var/apps/coder/integration_tests.sh
+        run: docker exec code-server bash /var/apps/coder/scripts/integration_tests.sh
 
       - name: Stop containers
         if: always()
