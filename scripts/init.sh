@@ -18,6 +18,17 @@ sudo chown -R coder:coder /home/coder/.continue
 sudo chown -R coder:coder /home/coder/.config/gcloud
 sudo chown -R coder:coder /home/coder/.ssh
 
+# Fix Docker socket permissions if it exists
+if [ -S /var/run/docker.sock ]; then
+    echo ">>> Granting permissions to Docker socket..."
+    sudo chmod 666 /var/run/docker.sock
+fi
+
+# Fix sudo hostname resolution warning
+if ! grep -q "code-server" /etc/hosts; then
+    echo "127.0.0.1 code-server" | sudo tee -a /etc/hosts > /dev/null
+fi
+
 # ── 1. DOCKER ACCESS CHECK ──
 echo ">>> Verifying Docker access..."
 if docker ps --format '{{.Names}}' | grep -q "code-server"; then
@@ -255,10 +266,17 @@ echo ""
 echo "============================================"
 echo ""
 
-# ── 6. SET PASSWORD FOR CODE-SERVER ──
-if [ -z "${PASSWORD:-}" ] && [ -n "${CODE_PASSWORD:-}" ]; then
-  export PASSWORD="$CODE_PASSWORD"
-fi
+# ── 6. FORCE PASSWORD AND CONFIG ──
+# code-server often prioritizes its config file over environment variables.
+# We explicitly overwrite it here to match our .env/init.sh settings.
+echo ">>> Ensuring code-server configuration matches environment..."
+mkdir -p /home/coder/.config/code-server
+cat > /home/coder/.config/code-server/config.yaml << EOF
+bind-addr: 0.0.0.0:8100
+auth: password
+password: ${CODE_PASSWORD:-password}
+cert: true
+EOF
 
 exec code-server \
   --bind-addr 0.0.0.0:8100 \
