@@ -54,14 +54,7 @@ jobs:
         run: mkdir -p data/vscode data/continue data/gcloud data/ssh
 
       - name: Start code-server
-        run: docker compose up -d
-        env:
-          ANTHROPIC_API_KEY: ""
-          OPENROUTER_API_KEY: ""
-          GEMINI_API_KEY: ""
-
-      - name: Wait for container to initialize
-        run: sleep 20
+        run: docker compose up -d --wait
 
       - name: Run integration tests inside container
         run: docker exec code-server bash /var/apps/coder/integration_tests.sh

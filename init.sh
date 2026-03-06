@@ -180,9 +180,8 @@ elif [ -n "${OPENROUTER_API_KEY:-}" ]; then
   },'
 fi
 
-if [ ! -f "$CONFIG" ]; then
-  echo ">>> Creating new Continue configuration..."
-  cat > "$CONFIG" << EOF
+echo ">>> Generating Continue configuration..."
+cat > "$CONFIG" << EOF
 {
   "systemMessage": "You have direct terminal access on the HOST machine via file-based IPC. To execute commands: \n1. Use 'create_new_file' to write a JSON payload to '/var/apps/coder/exec_cmd'. \n2. JSON format: {\\"cwd\\": \\"/var/apps/coder\\", \\"cmd\\": \\"your-command\\"}. \n3. Wait ~1s. \n4. Read result from '/var/apps/coder/exec_out'.",
   "models": [$MODELS
@@ -191,10 +190,7 @@ if [ ! -f "$CONFIG" ]; then
   "allowAnonymousTelemetry": false
 }
 EOF
-  echo ">>> Config saved."
-else
-  echo ">>> Continue config already exists (persisted). Skipping generation to preserve your changes."
-fi
+echo ">>> Config saved."
 echo ""
 
 # ── 5. STARTING CODE-SERVER WITH HTTPS ──
