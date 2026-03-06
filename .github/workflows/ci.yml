@@ -47,8 +47,8 @@ jobs:
 
       - name: Simulate server environment
         run: |
-          sudo mkdir -p /var/apps
-          sudo ln -s "${{ github.workspace }}" /var/apps/coder
+          sudo mkdir -p /var/apps/coder
+          sudo mount --bind "${{ github.workspace }}" /var/apps/coder
 
       - name: Create required data directories
         run: mkdir -p data/vscode data/continue data/gcloud data/ssh

@@ -64,20 +64,8 @@ RUN git config --system user.name "Code Server Agent" && \
 # Default SSH configuration
 RUN mkdir -p /home/coder/.ssh && \
     chmod 700 /home/coder/.ssh && \
-    cat > /home/coder/.ssh/config << 'EOF'
-Host github.com
-  HostName github.com
-  User git
-  IdentityFile ~/.ssh/id_ed25519
-  StrictHostKeyChecking no
-  UserKnownHostsFile /dev/null
-
-Host *
-  AddKeysToAgent yes
-  UseKeychain yes
-  IdentityFile ~/.ssh/id_ed25519
-EOF
-RUN chown -R coder:coder /home/coder/.ssh && \
+    printf 'Host github.com\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/id_ed25519\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n\nHost *\n  AddKeysToAgent yes\n  UseKeychain yes\n  IdentityFile ~/.ssh/id_ed25519\n' > /home/coder/.ssh/config && \
+    chown -R coder:coder /home/coder/.ssh && \
     chmod 600 /home/coder/.ssh/config
 
 # CODE-SERVER EXTENSIONS INSTALLATION
