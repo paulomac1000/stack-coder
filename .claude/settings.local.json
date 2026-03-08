@@ -34,7 +34,13 @@
       "Bash(python3 -m pytest tests/ -v)",
       "Bash(bash /var/apps/coder/scripts/unit_tests.sh)",
       "Bash(python3 -c \"import yaml; d=yaml.safe_load\\(open\\(''/var/apps/coder/docker-compose.yml''\\)\\); volumes=d[''services''][''code-server''][''volumes'']; print\\(''Volumes:'', len\\(volumes\\)\\); [print\\('' -'', v\\) for v in volumes]\")",
-      "Bash(bash scripts/unit_tests.sh)"
+      "Bash(bash scripts/unit_tests.sh)",
+      "Bash(docker exec code-server gh auth status)",
+      "Bash(docker exec code-server git config --global --list)",
+      "Bash(docker exec code-server chmod 600 /home/coder/.ssh/id_ed25519)",
+      "Bash(docker exec code-server ssh -T git@github.com)",
+      "Bash(git add .claude/settings.local.json)",
+      "Bash(git commit -m \"chore: add SSH debug commands to approved Claude Code permissions\")"
     ]
   }
 }
