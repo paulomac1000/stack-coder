@@ -17,11 +17,11 @@ jobs:
         run: sudo apt-get install -y shellcheck
 
       - name: Shellcheck all shell scripts
-        run: shellcheck --severity=warning *.sh
+        run: shellcheck --severity=warning scripts/*.sh
 
       - name: Bash syntax check all shell scripts
         run: |
-          for f in *.sh; do
+          for f in scripts/*.sh; do
             bash -n "$f" || exit 1
           done
 
@@ -54,17 +54,10 @@ jobs:
         run: mkdir -p data/vscode data/continue data/gcloud data/ssh
 
       - name: Start code-server
-        run: docker compose up -d
-        env:
-          ANTHROPIC_API_KEY: ""
-          OPENROUTER_API_KEY: ""
-          GEMINI_API_KEY: ""
-
-      - name: Wait for container to initialize
-        run: sleep 20
+        run: docker compose up -d --wait
 
       - name: Run integration tests inside container
-        run: docker exec code-server bash /var/apps/coder/integration_tests.sh
+        run: docker exec code-server bash /var/apps/coder/scripts/integration_tests.sh
 
       - name: Stop containers
         if: always()

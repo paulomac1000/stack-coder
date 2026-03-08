@@ -9,13 +9,23 @@ services:
     # Network mode host allows access to other services on the host easily
     # and simplifies the pipe setup
     network_mode: host
+    env_file:
+      - path: .env
+        required: false
     environment:
       - TZ=Europe/Warsaw
       - DOCKER_HOST=unix:///var/run/docker.sock
-    entrypoint: ["/bin/bash", "/var/apps/coder/init.sh"]
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-sf", "https://localhost:8100"]
+      interval: 5s
+      timeout: 5s
+      start_period: 30s
+      retries: 6
+    entrypoint: ["/bin/bash", "/var/apps/coder/scripts/init.sh"]
     volumes:
       # 1. Workspace Access
       - /var/apps:/var/apps
+      - .:/var/apps/coder
 
       # 2. Docker Socket (Control host docker)
       - /var/run/docker.sock:/var/run/docker.sock

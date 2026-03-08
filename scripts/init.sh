@@ -18,6 +18,17 @@ sudo chown -R coder:coder /home/coder/.continue
 sudo chown -R coder:coder /home/coder/.config/gcloud
 sudo chown -R coder:coder /home/coder/.ssh
 
+# Fix Docker socket permissions if it exists
+if [ -S /var/run/docker.sock ]; then
+    echo ">>> Granting permissions to Docker socket..."
+    sudo chmod 666 /var/run/docker.sock
+fi
+
+# Fix sudo hostname resolution warning
+if ! grep -q "code-server" /etc/hosts; then
+    echo "127.0.0.1 code-server" | sudo tee -a /etc/hosts > /dev/null
+fi
+
 # ── 1. DOCKER ACCESS CHECK ──
 echo ">>> Verifying Docker access..."
 if docker ps --format '{{.Names}}' | grep -q "code-server"; then
@@ -180,9 +191,8 @@ elif [ -n "${OPENROUTER_API_KEY:-}" ]; then
   },'
 fi
 
-if [ ! -f "$CONFIG" ]; then
-  echo ">>> Creating new Continue configuration..."
-  cat > "$CONFIG" << EOF
+echo ">>> Generating Continue configuration..."
+cat > "$CONFIG" << EOF
 {
   "systemMessage": "You have direct terminal access on the HOST machine via file-based IPC. To execute commands: \n1. Use 'create_new_file' to write a JSON payload to '/var/apps/coder/exec_cmd'. \n2. JSON format: {\\"cwd\\": \\"/var/apps/coder\\", \\"cmd\\": \\"your-command\\"}. \n3. Wait ~1s. \n4. Read result from '/var/apps/coder/exec_out'.",
   "models": [$MODELS
@@ -191,9 +201,46 @@ if [ ! -f "$CONFIG" ]; then
   "allowAnonymousTelemetry": false
 }
 EOF
-  echo ">>> Config saved."
+echo ">>> Config saved."
+echo ""
+
+# ── 5. GENERATE DEFAULT VS CODE SETTINGS ──
+SETTINGS_DIR="/home/coder/.local/share/code-server/User"
+SETTINGS_FILE="$SETTINGS_DIR/settings.json"
+
+if [ ! -f "$SETTINGS_FILE" ]; then
+  echo ">>> Generating default VS Code settings..."
+  mkdir -p "$SETTINGS_DIR"
+  cat > "$SETTINGS_FILE" << 'EOF'
+{
+  "editor.formatOnSave": true,
+  "files.exclude": {
+    "**/.git": true,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true,
+    "**/Thumbs.db": true,
+    "**/node_modules": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/__pycache__": true
+  },
+  "editor.renderWhitespace": "selection",
+  "editor.guides.bracketPairs": true,
+  "workbench.colorTheme": "Default Dark Modern",
+  "terminal.integrated.defaultProfile.linux": "bash",
+  "continue.enableTabAutocomplete": true,
+  "continue.telemetryEnabled": false
+}
+EOF
+  echo ">>> VS Code settings saved."
 else
-  echo ">>> Continue config already exists (persisted). Skipping generation to preserve your changes."
+  echo ">>> VS Code settings already exist. Skipping..."
 fi
 echo ""
 
@@ -219,8 +266,20 @@ echo ""
 echo "============================================"
 echo ""
 
+# ── 6. FORCE PASSWORD AND CONFIG ──
+# code-server often prioritizes its config file over environment variables.
+# We explicitly overwrite it here to match our .env/init.sh settings.
+echo ">>> Ensuring code-server configuration matches environment..."
+mkdir -p /home/coder/.config/code-server
+cat > /home/coder/.config/code-server/config.yaml << EOF
+bind-addr: 0.0.0.0:8100
+auth: password
+password: ${CODE_PASSWORD:-password}
+cert: true
+EOF
+
 exec code-server \
-  --bind-addr 0.0.0.0:8080 \
+  --bind-addr 0.0.0.0:8100 \
   --cert \
   --auth password \
   /var/apps
