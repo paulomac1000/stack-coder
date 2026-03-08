@@ -1,37 +1,57 @@
+version: "3.8"
+
 services:
   code-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
     container_name: code-server
     hostname: code-server
+    # Pre-populate /etc/hosts so sudo can resolve hostname without warnings on startup
+    extra_hosts:
+      - "code-server:127.0.0.1"
     restart: unless-stopped
-    # Network mode host allows access to other services on the host easily
-    # and simplifies the pipe setup
-    network_mode: host
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      - TZ=Europe/Warsaw
-      - DOCKER_HOST=unix:///var/run/docker.sock
-    healthcheck:
-      test: ["CMD", "curl", "-k", "-sf", "https://localhost:8100"]
-      interval: 5s
-      timeout: 5s
-      start_period: 30s
-      retries: 6
-    entrypoint: ["/bin/bash", "/var/apps/coder/scripts/init.sh"]
-    volumes:
-      # 1. Workspace Access
-      - /var/apps:/var/apps
-      - .:/var/apps/coder
 
-      # 2. Docker Socket (Control host docker)
+    # Load passwords and API keys from .env (gitignored)
+    env_file:
+      - .env
+
+    environment:
+      - TZ=${CODE_TZ:-Europe/Warsaw}
+      - CODE_DEFAULT_WORKSPACE=${CODE_DEFAULT_WORKSPACE:-/var/apps}
+      # Docker API version (fixes client/daemon mismatch)
+      - DOCKER_API_VERSION=1.44
+
+    # Host networking gives direct access to LAN services (MCP server on 192.168.0.10)
+    network_mode: host
+
+    volumes:
+      # 1. Docker socket — required for agents to run Docker commands
       - /var/run/docker.sock:/var/run/docker.sock
 
-      # 4. Persistence (Config & Auth)
+      # 2. Host workspace — same path on host and container for consistency
+      - /var/apps:/var/apps
+
+      # 3. VS Code config, extensions, HTTPS cert
       - ./data/vscode:/home/coder/.local/share/code-server
-      - ./data/continue:/home/coder/.continue
-      - ./data/gcloud:/home/coder/.config/gcloud
+
+      # 4. SSH keys (GitHub auth)
       - ./data/ssh:/home/coder/.ssh
+
+      # 5. Continue AI extension (config + chat history + models)
+      - ./data/continue:/home/coder/.continue
+
+      # 6. AI extension auth (survive rebuild)
+      - ./data/claude:/home/coder/.claude
+      - ./data/gemini:/home/coder/.gemini
+      - ./data/google-vscode-auth:/home/coder/.cache/google-vscode-extension
+      - ./data/copilot:/home/coder/.config/github-copilot
+      - ./data/gh:/home/coder/.config/gh
+      - ./data/gcloud:/home/coder/.config/gcloud
+
+    entrypoint: ["/bin/bash", "/var/apps/coder/scripts/init.sh"]
+
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-sf", "https://localhost:8100"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s

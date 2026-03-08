@@ -18,3 +18,14 @@ repos:
     hooks:
       - id: hadolint
         files: ^Dockerfile$
+        args: ["--ignore", "DL3008", "--ignore", "DL3013"]
+
+  - repo: local
+    hooks:
+      - id: unit-tests-docker
+        name: Unit tests (Docker container)
+        entry: scripts/run_tests.sh
+        args: [unit]
+        language: system
+        pass_filenames: false
+        stages: [pre-push]

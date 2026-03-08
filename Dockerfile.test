@@ -1,0 +1,18 @@
+# Dockerfile.test
+FROM alpine:3.19
+
+# Install dependencies for test scripts
+RUN apk add --no-cache \
+    bash \
+    shellcheck \
+    jq \
+    grep \
+    python3 \
+    py3-pip \
+    py3-yaml && \
+    pip install --no-cache-dir pytest --break-system-packages
+
+WORKDIR /var/apps/coder
+
+# Default command runs bash unit tests; override with "pytest tests/" for Python tests
+CMD ["bash", "scripts/unit_tests.sh"]

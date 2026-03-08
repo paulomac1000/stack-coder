@@ -2,16 +2,15 @@ FROM codercom/code-server:latest
 
 USER root
 
-# SYSTEM TOOLS INSTALLATION
+# ── SYSTEM TOOLS ──────────────────────────────────────────────────────────────
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Docker CLI - for host Docker access
+    # Docker CLI (access to host Docker daemon via socket)
     docker.io \
-    \
     # Git and GitHub CLI
     git \
     gh \
-    \
-    # Networking and diagnostic tools
+    # Network tools
     curl \
     wget \
     jq \
@@ -19,7 +18,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     iputils-ping \
     dnsutils \
     telnet \
-    \
     # System utilities
     htop \
     vim \
@@ -29,29 +27,40 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rsync \
     zip \
     unzip \
-    \
-    # Python and pip (for scripts)
+    # Python (scripts and test runner)
     python3 \
     python3-pip \
-    \
-    # Other useful tools
+    python3-yaml \
+    # Other
     openssh-client \
     gnupg \
     apt-transport-https \
     ca-certificates \
-    software-properties-common
-
-# Install Google Cloud CLI
-RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - && \
-    apt-get update && apt-get install -y google-cloud-cli && \
-    # Cleanup
+    software-properties-common && \
+    # Install pytest for VS Code Test Explorer integration
+    pip3 install --no-cache-dir pytest --break-system-packages && \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 
-# USER CONFIGURATION
+# ── GOOGLE CLOUD CLI ──────────────────────────────────────────────────────────
 
-# Add coder user to the docker group (for docker.sock access)
+RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" \
+        | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+        | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - && \
+    apt-get update && apt-get install -y google-cloud-cli && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
+
+# ── MKCERT (trusted LAN HTTPS — enables Clipboard API in browser) ─────────────
+
+RUN curl -fsSL \
+    https://github.com/FiloSottile/mkcert/releases/download/v1.4.4/mkcert-v1.4.4-linux-amd64 \
+    -o /usr/local/bin/mkcert && chmod +x /usr/local/bin/mkcert
+
+# ── USER CONFIGURATION ────────────────────────────────────────────────────────
+
+# Add coder user to the docker group for Docker socket access
 RUN usermod -aG docker coder
 
 # Default Git configuration
@@ -64,14 +73,16 @@ RUN git config --system user.name "Code Server Agent" && \
 # Default SSH configuration
 RUN mkdir -p /home/coder/.ssh && \
     chmod 700 /home/coder/.ssh && \
-    printf 'Host github.com\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/id_ed25519\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n\nHost *\n  AddKeysToAgent yes\n  UseKeychain yes\n  IdentityFile ~/.ssh/id_ed25519\n' > /home/coder/.ssh/config && \
+    printf 'Host github.com\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/id_ed25519\n  StrictHostKeyChecking no\n  UserKnownHostsFile /dev/null\n\nHost *\n  AddKeysToAgent yes\n  IdentityFile ~/.ssh/id_ed25519\n' \
+        > /home/coder/.ssh/config && \
     chown -R coder:coder /home/coder/.ssh && \
     chmod 600 /home/coder/.ssh/config
 
-# CODE-SERVER EXTENSIONS INSTALLATION
+# ── VS CODE EXTENSIONS ────────────────────────────────────────────────────────
 
 USER coder
 
+# Core extensions (available on Open VSX)
 RUN code-server --install-extension Continue.continue && \
     code-server --install-extension redhat.vscode-yaml && \
     code-server --install-extension ms-python.python && \
@@ -80,12 +91,24 @@ RUN code-server --install-extension Continue.continue && \
     code-server --install-extension usernamehw.errorlens && \
     code-server --install-extension Anthropic.claude-code
 
-# PREPARATION FOR INIT.SH
+# Optional extensions (may not be on Open VSX — non-fatal failures)
+# Preserved via data/vscode volume mount if installed manually
+RUN code-server --install-extension GitHub.copilot || true && \
+    code-server --install-extension GitHub.copilot-chat || true && \
+    code-server --install-extension GoogleCloudTools.gemini-code-assist || true
 
-# Create marker files to prevent init.sh from re-running installations
-# (everything is already in the Dockerfile)
-RUN mkdir -p /home/coder/.local/share/code-server && \
-    touch /home/coder/.local/share/code-server/.git-configured && \
-    touch /home/coder/.local/share/code-server/.ai-ready
+USER root
 
+# ── EXTENSION COLD-COPY ───────────────────────────────────────────────────────
+# Copy extensions to a "cold source" dir so init.sh can restore them
+# to an empty data/vscode volume on first startup without requiring rebuild.
+
+RUN mkdir -p /usr/local/share/code-server-extensions && \
+    cp -R /home/coder/.local/share/code-server/extensions/. \
+        /usr/local/share/code-server-extensions/ || true && \
+    chown -R coder:coder /usr/local/share/code-server-extensions
+
+# ── FINAL ─────────────────────────────────────────────────────────────────────
+
+USER coder
 WORKDIR /var/apps
