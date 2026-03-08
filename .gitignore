@@ -4,13 +4,18 @@ google-cloud-key.json
 
 # Runtime data (code-server persistence)
 data/
-continue/
 
 # Pipe IPC files
 exec_cmd
 exec_out
 exec_lock
 nohup.out
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
 
 # Backups
 *.bak

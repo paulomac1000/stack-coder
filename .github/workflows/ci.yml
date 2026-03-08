@@ -12,29 +12,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Install shellcheck
         run: sudo apt-get install -y shellcheck
-
-      - name: Shellcheck all shell scripts
+        
+      - name: Shellcheck scripts
         run: shellcheck --severity=warning scripts/*.sh
-
-      - name: Bash syntax check all shell scripts
-        run: |
-          for f in scripts/*.sh; do
-            bash -n "$f" || exit 1
-          done
-
-      - name: Docker Compose config validation
+        
+      - name: Docker Compose Config Check
         run: docker compose config --quiet
 
-  build:
-    name: Docker Build
+  unit-tests:
+    name: Unit Tests (Docker)
     runs-on: ubuntu-latest
     needs: lint
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Run unit tests via container
+        run: bash scripts/run_tests.sh unit
 
+  build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      
       - name: Build Docker image
         run: docker compose build
 
@@ -45,20 +49,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Simulate server environment
+      # docker-compose.yml uses hardcoded /var/apps paths; bind-mount the workspace there
+      - name: Simulate server environment (/var/apps/coder)
         run: |
           sudo mkdir -p /var/apps/coder
           sudo mount --bind "${{ github.workspace }}" /var/apps/coder
 
-      - name: Create required data directories
-        run: mkdir -p data/vscode data/continue data/gcloud data/ssh
+      # Create all data/ directories so volume mounts succeed on first run
+      - name: Create data directories
+        run: |
+          mkdir -p data/vscode data/continue data/ssh \
+                   data/claude data/gemini data/google-vscode-auth \
+                   data/copilot data/gh data/gcloud
 
-      - name: Start code-server
-        run: docker compose up -d --wait
+      # run_tests.sh integration: starts stack, runs tests inside container, stops stack
+      - name: Run integration tests
+        run: bash scripts/run_tests.sh integration
 
-      - name: Run integration tests inside container
-        run: docker exec code-server bash /var/apps/coder/scripts/integration_tests.sh
-
+      # Always clean up containers even if the test step fails
       - name: Stop containers
         if: always()
-        run: docker compose down
+        run: docker compose down --remove-orphans || true
