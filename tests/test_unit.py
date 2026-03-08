@@ -93,6 +93,17 @@ class TestRequiredFiles:
     def test_pyproject_toml_exists(self):
         assert os.path.isfile(os.path.join(PROJECT_DIR, "pyproject.toml"))
 
+    def test_env_example_exists(self):
+        assert os.path.isfile(os.path.join(PROJECT_DIR, ".env.example")), (
+            ".env.example must exist to document required environment variables"
+        )
+
+    def test_env_example_has_mcp_url(self):
+        env_example = os.path.join(PROJECT_DIR, ".env.example")
+        assert _file_contains(env_example, "MCP_SSE_URL"), (
+            ".env.example must document MCP_SSE_URL so users know how to configure the MCP server"
+        )
+
 
 # ── docker-compose.yml volume mounts ─────────────────────────────────────────
 
@@ -118,6 +129,24 @@ class TestDockerCompose:
         assert _file_contains(COMPOSE_FILE, pattern), (
             f"docker-compose.yml is missing volume mount for {description} "
             f"(expected pattern: {pattern!r})"
+        )
+
+    def test_no_obsolete_version_attribute(self):
+        """docker-compose.yml must not have the obsolete 'version:' top-level key."""
+        pytest.importorskip("yaml", reason="PyYAML not installed")
+        import yaml  # noqa: PLC0415
+        with open(COMPOSE_FILE, encoding="utf-8") as fh:
+            data = yaml.safe_load(fh)
+        assert "version" not in data, (
+            "docker-compose.yml must not have 'version' attribute — it is obsolete in "
+            "Compose v2 and causes warnings that break CI strict mode"
+        )
+
+    def test_env_file_is_optional(self):
+        """env_file in docker-compose.yml must be optional so CI works without .env."""
+        assert _file_contains(COMPOSE_FILE, "required: false"), (
+            "docker-compose.yml env_file must be configured with 'required: false' "
+            "so that CI pipelines without a .env file don't fail"
         )
 
     def test_extra_hosts_hostname_fix(self):
@@ -169,6 +198,19 @@ class TestInitShScript:
     def test_mcp_configured_for_claude_code(self):
         assert _file_contains(INIT_SH, "CLAUDE_SETTINGS"), (
             "init.sh must configure MCP server for Claude Code"
+        )
+
+    def test_mcp_url_from_env(self):
+        """init.sh must read MCP_SSE_URL from environment (not hardcoded)."""
+        assert _file_contains(INIT_SH, "MCP_SSE_URL"), (
+            "init.sh must use MCP_SSE_URL variable so the URL is configurable via .env"
+        )
+
+    def test_vscode_mcp_always_patched(self):
+        """VS Code settings MCP section must be patched on every startup, not just first run."""
+        assert _file_contains(INIT_SH, "Patching MCP into VS Code settings"), (
+            "init.sh must always patch MCP into VS Code settings (not only on first run) "
+            "so that MCP_SSE_URL changes take effect without wiping data/vscode"
         )
 
     def test_ssh_key_generation(self):

@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   code-server:
     build: .
@@ -10,9 +8,10 @@ services:
       - "code-server:127.0.0.1"
     restart: unless-stopped
 
-    # Load passwords and API keys from .env (gitignored)
+    # Load passwords and API keys from .env (gitignored, optional so CI works without it)
     env_file:
-      - .env
+      - path: .env
+        required: false
 
     environment:
       - TZ=${CODE_TZ:-Europe/Warsaw}
@@ -20,7 +19,7 @@ services:
       # Docker API version (fixes client/daemon mismatch)
       - DOCKER_API_VERSION=1.44
 
-    # Host networking gives direct access to LAN services (MCP server on 192.168.0.10)
+    # Host networking gives direct access to LAN services (MCP server on 192.168.0.101)
     network_mode: host
 
     volumes:

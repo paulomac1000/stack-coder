@@ -140,6 +140,8 @@ else
 fi
 
 # ── 6. CONTINUE CONFIG ────────────────────────────────────────────────────────
+# MCP server URL — read from env, fallback to default
+MCP_SSE_URL="${MCP_SSE_URL:-http://192.168.0.101:9092/sse}"
 
 mkdir -p /home/coder/.continue
 CONFIG="/home/coder/.continue/config.json"
@@ -184,7 +186,7 @@ fi
 
 # Always patch MCP server (idempotent jq merge)
 echo ">>> Patching MCP into Continue config..."
-jq '.mcpServers = {"ha-mcp": {"transport": {"type": "sse", "url": "http://192.168.0.10:9092/sse"}}}' \
+jq --arg url "$MCP_SSE_URL" '.mcpServers = {"ha-mcp": {"transport": {"type":"sse","url":$url}}}' \
     "$CONFIG" > /tmp/continue_tmp.json && mv /tmp/continue_tmp.json "$CONFIG"
 
 # ── 7. CLAUDE CODE MCP SETTINGS ──────────────────────────────────────────────
@@ -192,15 +194,13 @@ jq '.mcpServers = {"ha-mcp": {"transport": {"type": "sse", "url": "http://192.16
 CLAUDE_SETTINGS="/home/coder/.claude/settings.json"
 if [ ! -f "$CLAUDE_SETTINGS" ]; then
     mkdir -p /home/coder/.claude
-    printf '{\n  "mcpServers": {\n    "ha-mcp": {"type":"sse","url":"http://192.168.0.10:9092/sse"}\n  }\n}\n' \
-        > "$CLAUDE_SETTINGS"
+    printf '{\n  "mcpServers": {\n    "ha-mcp": {"type":"sse","url":"%s"}\n  }\n}\n' \
+        "$MCP_SSE_URL" > "$CLAUDE_SETTINGS"
     echo ">>> Claude Code settings created with MCP."
-elif ! jq -e '.mcpServers' "$CLAUDE_SETTINGS" >/dev/null 2>&1; then
-    jq '. + {"mcpServers": {"ha-mcp": {"type":"sse","url":"http://192.168.0.10:9092/sse"}}}' \
-        "$CLAUDE_SETTINGS" > /tmp/claude_tmp.json && mv /tmp/claude_tmp.json "$CLAUDE_SETTINGS"
-    echo ">>> MCP patched into Claude Code settings."
 else
-    echo ">>> Claude Code MCP settings already present."
+    jq --arg url "$MCP_SSE_URL" '.mcpServers["ha-mcp"] = {"type":"sse","url":$url}' \
+        "$CLAUDE_SETTINGS" > /tmp/claude_tmp.json && mv /tmp/claude_tmp.json "$CLAUDE_SETTINGS"
+    echo ">>> Claude Code MCP settings updated."
 fi
 
 # ── 8. VS CODE USER SETTINGS ─────────────────────────────────────────────────
@@ -220,28 +220,18 @@ if [ ! -f "$VSCODE_SETTINGS" ]; then
   "python.testing.unittestEnabled": false,
   "python.testing.pytestArgs": [
     "/var/apps/coder/tests"
-  ],
-  "mcp": {
-    "servers": {
-      "ha-mcp": {
-        "type": "sse",
-        "url": "http://192.168.0.10:9092/sse"
-      }
-    }
-  },
-  "cloudcode.gemini.mcpServers": [
-    {
-      "name": "ha-mcp",
-      "transport": "sse",
-      "url": "http://192.168.0.10:9092/sse"
-    }
   ]
 }
 EOF
     echo ">>> VS Code user settings created."
-else
-    echo ">>> VS Code user settings already exist."
 fi
+
+# Always patch MCP into VS Code settings (idempotent — picks up MCP_SSE_URL changes)
+echo ">>> Patching MCP into VS Code settings..."
+jq --arg url "$MCP_SSE_URL" '
+  .mcp.servers["ha-mcp"] = {"type":"sse","url":$url} |
+  .["cloudcode.gemini.mcpServers"] = [{"name":"ha-mcp","transport":"sse","url":$url}]
+' "$VSCODE_SETTINGS" > /tmp/vscode_tmp.json && mv /tmp/vscode_tmp.json "$VSCODE_SETTINGS"
 
 # ── 9. CODE-SERVER CONFIG (password) ─────────────────────────────────────────
 
